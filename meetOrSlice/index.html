@@ -71,10 +71,6 @@
     <button>slice</button>
     <div id="text">当前类型： meet</div>
     <div id="root"></div>
-    <p>最后和SVG对比一下效果，其中关于边框的两个问题：
-
-        - svg中边框宽度不一致：是因为SVG缩放中会连同边框一起缩放
-        - svg中部分 部分边框被裁切：是因为svg内部矩形的x,y定位，是以边框的中线为标准计算的，所以当坐标点为`(0,0)`时，会有一半的边框超出svg的窗口范围，导致被截断。</p>
     <script>
         const vpSize = [
             {w: 80, h: 80},     // 1: 1
