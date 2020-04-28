@@ -1,0 +1,254 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        #root{
+            display: flex;
+        }
+        #text{
+            margin-top:30px;
+        }
+        .legend{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+        .row{
+            display: flex;
+        }
+        .col{
+            margin: 15px;
+            background-color: lavender; 
+            overflow: hidden;
+        }
+        .content{
+            stroke:#ca1934;
+            fill: #ffe1e1;
+            background-color: #ffe1e1;
+            border: 1px solid #ca1934;
+            box-sizing: border-box;
+        }
+        .svg, 
+        .div{
+            width: 1000px;
+            position: relative;
+            margin: 40px auto;
+            padding: 40px;
+        }
+        .svg::before,
+        .div::before
+        {
+            display: block;
+            position: absolute;
+            top: 10px;
+            left: 10px;
+        }
+        .svg{
+            background-color: papayawhip;
+        }
+        .svg::before{
+            content: 'SVG 原生方法实现';
+        }
+        .div{
+            background-color: #fff9e5;
+        }
+        .div::before{
+            content: 'meetOrSlice 方法实现';
+        }
+        button.active{
+            background: #f97d82;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <button>meet</button>
+    <button>slice</button>
+    <div id="text">当前类型： meet</div>
+    <div id="root"></div>
+    <p>最后和SVG对比一下效果，其中关于边框的两个问题：
+
+        - svg中边框宽度不一致：是因为SVG缩放中会连同边框一起缩放
+        - svg中部分 部分边框被裁切：是因为svg内部矩形的x,y定位，是以边框的中线为标准计算的，所以当坐标点为`(0,0)`时，会有一半的边框超出svg的窗口范围，导致被截断。</p>
+    <script>
+        const vpSize = [
+            {w: 80, h: 80},     // 1: 1
+            {w: 100, h: 70},    // 10: 7
+            {w: 40, h: 140},    // 2 : 7
+        ];
+        const vbSize = [
+            {w: 100, h: 100},   // 1 : 1
+            {w: 80, h: 20},     // 4 : 1
+            {w: 100, h: 80},    // 5 : 4 
+            {w: 20, h: 120},    // 1 : 6
+            {w: 40, h: 120}     // 1 : 3
+        ];
+
+      
+        const TYPES = ['meet', 'slice'];
+        const SVG_NS = 'http://www.w3.org/2000/svg';
+        const root = document.querySelector('#root');
+        const text = document.querySelector('#text');
+        const body = document.querySelector('body');
+        const buttons = document.querySelectorAll('button');
+        const SVG_DOMS = [], 
+              CONTENTS_DATA = [];
+
+    
+        function meetOrSlice(type = 'meet', boxW, boxH, contentW, contentH){
+            let boxRadio = boxW / boxH, 
+                contentRadio = contentW / contentH, 
+                scaleW = (boxW / contentW) || 1,
+                scaleH =( boxH / contentH) || 1,
+                scale = 1;
+            if(type == 'meet'){
+                scale = boxRadio >= contentRadio ? scaleH : scaleW;
+            }else if(type == 'slice'){
+                scale = boxRadio >= contentRadio ? scaleW : scaleH;
+            }
+
+            return {
+                w: scale * contentW,
+                h: scale * contentH
+            }
+        }
+
+        function createLegend(arr, type){
+            let row = document.createElement('div');
+                row.setAttribute('class', 'row');
+            arr.forEach((box, i) => {
+            let col = document.createElement('div');
+                col.setAttribute('class', `col ${type} legend`); 
+                setAttributes(col, 'style', {
+                    width: `${box.w}px`,
+                    height: `${box.h}px`
+                })
+                col.innerHTML = `${box.w} x ${box.h}`;
+                row.append(col);
+            })
+            body.insertBefore(row, root);
+        }
+
+        function setAttributes(dom, type, attrs = {}){
+            for(let key in attrs){
+                let val = attrs[key];
+                if(type == 'style'){
+                    dom.style[key] = val;
+                }else{
+                    dom.setAttribute(key, val);
+                }
+            }
+        }
+
+        function createSVG(){
+            let wrap = document.createElement('div');
+            setAttributes(wrap, 'attr', {
+                'class': 'svg'
+            })
+            vpSize.forEach((vp, i) => {
+                let row = document.createElement('div');
+                row.setAttribute('class', 'row');
+                    vbSize.forEach((vb, j) => {
+                        let svg = document.createElementNS(SVG_NS,'svg');
+                        setAttributes(svg, 'attr', {
+                            'class': 'col',
+                            width: vp.w,
+                            height: vp.h,
+                            viewBox: `0 0 ${vb.w} ${vb.h}`,
+                            preserveAspectRatio: 'xMinYMin meet'
+                        });
+                    
+
+                        let rect = document.createElementNS(SVG_NS,'rect');
+                        setAttributes(rect, 'attr', {
+                            'class': 'content',
+                            x: 0,
+                            y: 0,
+                            width: vb.w,
+                            height: vb.h,
+                        });
+                    
+                        SVG_DOMS.push(svg);
+                        svg.append(rect);
+                        row.append(svg);
+                    })
+                wrap.append(row);
+            })
+            root.append(wrap);
+        }
+        
+        function createDom(){
+            let wrap = document.createElement('div');
+            setAttributes(wrap, 'attr', {
+                'class': 'div'
+            })
+            vpSize.forEach((vp, i) => {
+            let row = document.createElement('div');
+                setAttributes(row, 'attr', {
+                    'class': 'row'
+                });
+                vbSize.forEach((vb, j) => {
+                    let box = document.createElement('div');
+                    setAttributes(box, 'attr', {
+                        'class': 'col'
+                    });
+                    setAttributes(box, 'style', {
+                        width: `${vp.w}px`,
+                        height: `${vp.h}px`
+                    });
+                
+                    let content = document.createElement('div');
+                    let {w, h} = meetOrSlice('meet',vp.w, vp.h, vb.w, vb.h);
+                    setAttributes(content, 'attr', {
+                        'class': 'content'
+                    })
+                    setAttributes(content, 'style', {
+                        width: `${w}px`,
+                        height: `${h}px`,
+                    });
+
+                    CONTENTS_DATA.push({
+                        dom: content,
+                        boxSize: [vp.w, vp.h],
+                        contentSize: [vb.w, vb.h]
+                    });
+                    box.append(content);
+                    row.append(box);
+                })
+                wrap.append(row); 
+            })
+            root.append(wrap);
+        }
+        
+        
+        buttons.forEach((btn,i) => {
+            btn.addEventListener('click', () => {
+                let type = TYPES[i];
+                SVG_DOMS.forEach(s => {
+                    s.setAttribute('preserveAspectRatio', `xMinYMin ${type}`)
+                })
+                CONTENTS_DATA.forEach(d => {
+                    const {dom, boxSize, contentSize} = d;
+                    let {w, h} = meetOrSlice(type, ...boxSize, ...contentSize);
+                    
+                    setAttributes(dom, 'style', {
+                        width: `${w}px`,
+                        height: `${h}px`,
+                    });
+                })
+                text.innerHTML = `当前类型：${type}`;
+            })
+        })
+
+        createSVG();
+        createDom();
+        createLegend(vpSize, 'box');
+        createLegend(vbSize, 'content');
+    </script>
+</body>
+</html>
